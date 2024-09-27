@@ -1,51 +1,84 @@
 // src/App.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Route, Switch, Link } from 'react-router-dom';
 import TaskList from './components/TaskList';
 import AddTaskForm from './components/AddTaskForm';
+import axiosInstance from './api/axios';
 import './App.css';
 
 function App() {
   const [tasks, setTasks] = useState([]);
 
-  const addTask = (task) => {
-    setTasks([...tasks, task]);
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  const fetchTasks = async () => {
+    try {
+      const response = await axiosInstance.get('/');
+      setTasks(response.data);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+    }
+  };
+
+  const addTask = async (task) => {
+    try {
+      const response = await axiosInstance.post('/', task);
+      setTasks([...tasks, response.data]);
+    } catch (error) {
+      console.error('Error adding task:', error);
+    }
+  };
+
+  const updateTask = async (id, updatedTask) => {
+    try {
+      const response = await axiosInstance.put(`/${id}`, updatedTask);
+      setTasks(tasks.map(task => (task._id === id ? response.data : task)));
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
+  };
+
+  const deleteTask = async (id) => {
+    try {
+      await axiosInstance.delete(`/${id}`);
+      setTasks(tasks.filter(task => task._id !== id));
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
   };
 
   return (
-    <div className="container-fluid">
-      <div className="row">
-        {/* Sidebar */}
-        <nav className="col-md-2 d-none d-md-block bg-light sidebar">
-          <div className="sidebar-sticky">
-            <h2>Kadraf Tasks</h2>
-            <ul className="nav flex-column">
+    <Router>
+      <div className="App">
+        <nav className="navbar navbar-expand-lg navbar-light bg-light">
+          <Link className="navbar-brand" to="/">Kadraf Task Manager</Link>
+          <div className="collapse navbar-collapse">
+            <ul className="navbar-nav mr-auto">
               <li className="nav-item">
-                <a className="nav-link active" href="#">
-                  Dashboard
-                </a>
+                <Link className="nav-link" to="/">Dashboard</Link>
               </li>
               <li className="nav-item">
-                <a className="nav-link" href="#">
-                  Tasks
-                </a>
-              </li>
-              <li className="nav-item">
-                <a className="nav-link" href="#">
-                  Notifications
-                </a>
+                <Link className="nav-link" to="/add">Add Task</Link>
               </li>
             </ul>
           </div>
         </nav>
 
-        {/* Main content */}
-        <main role="main" className="col-md-9 ml-sm-auto col-lg-10 px-4">
-          <h1 className="my-4">Task Management System</h1>
-          <AddTaskForm addTask={addTask} />
-          <TaskList tasks={tasks} />
-        </main>
+        <div className="container mt-4">
+          <Switch>
+            <Route exact path="/">
+              <TaskList tasks={tasks} updateTask={updateTask} deleteTask={deleteTask} />
+            </Route>
+            <Route path="/add">
+              <AddTaskForm addTask={addTask} />
+            </Route>
+            {/* Add more routes as needed */}
+          </Switch>
+        </div>
       </div>
-    </div>
+    </Router>
   );
 }
 
